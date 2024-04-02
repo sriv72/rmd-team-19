@@ -11,6 +11,14 @@ from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
 import imageio
 
+def get_velo(x,y):
+    delta_x = np.diff(x, axis=0)
+    delta_y = np.diff(y, axis=0)
+    angles = np.arctan2(delta_y, delta_x) * (180 / np.pi)
+    angles[angles > 143.7] -= 360
+    magnitude_changes = np.sqrt(delta_x**2 + delta_y**2)
+    return magnitude_changes, angles
+    
 def get_points(t1,t2,t3,t4,t5):
     [Ax,Ay] = [0, 0]
     [Bx,By] = [l6, 0]
@@ -29,7 +37,7 @@ l3 = 1.643;
 l4 = 2.07;
 l5 = 1.789;
 l6 = 5.445;
-num_frames = 250
+num_frames = 100
 theta_values = np.concatenate((np.linspace(0.25, 0.94, num_frames), np.linspace(0.94, 0.25, num_frames)), axis=0)
 
 Cx_history = []
@@ -43,8 +51,9 @@ Fy_history = []
 Gx_history = []
 Gy_history = []
 
+
 # Function to generate plot for a given frame
-def generate_plot(theta):
+def generate_plot(theta, show = False):
     t1 = theta
     def equations(x):
         t2, t3, t4, t5 = x
@@ -112,9 +121,21 @@ def generate_plot(theta):
     plt.xlabel('X')
     plt.ylabel('Y')
     
+    
+    if show == True:
+        delta = 0.33
+        plt.text(Ax,Ay+delta,'A', fontsize=16)
+        plt.text(Bx,By+delta,'B', fontsize=16)
+        plt.text(Cx,Cy-2*delta,'C', fontsize=16)
+        plt.text(Dx,Dy-2*delta,'D', fontsize=16)
+        plt.text(Ex-2*delta,Ey,'E', fontsize=16)
+        plt.text(Fx,Fy+delta,'F', fontsize=16)
+        plt.text(Gx,Gy-2*delta,'G', fontsize=16)
+        plt.show()
+    else:
     # Save plot as image
-    plt.savefig(f'frame_{theta:.2f}.png')
-    plt.close()
+        plt.savefig(f'frame_{theta:.2f}.png')
+        plt.close()
 
 # Generate plots for each frame
 for theta in theta_values:
@@ -127,3 +148,44 @@ for theta in theta_values:
 
 # Save images as GIF
 imageio.mimsave('animation_trail.gif', images, fps=50)
+
+c_mag, c_dir = get_velo(Cx_history,Cy_history)
+d_mag, d_dir = get_velo(Dx_history,Dy_history)
+e_mag, e_dir = get_velo(Ex_history,Ey_history)
+f_mag, f_dir = get_velo(Fx_history,Fy_history)
+g_mag, g_dir = get_velo(Gx_history,Gy_history)
+
+norm = max(e_mag)
+c_mag = c_mag/norm
+d_mag = d_mag/norm
+e_mag = e_mag/norm
+f_mag = f_mag/norm
+g_mag = g_mag/norm
+
+x_var = np.linspace(0,1,len(c_mag))
+
+plt.plot(x_var,c_mag,linewidth=2,c='r',label='C',linestyle=':')
+plt.plot(x_var,d_mag,linewidth=2,c='r',label='D',linestyle='--')
+plt.plot(x_var,e_mag,linewidth=2,c='purple',label='E')
+plt.plot(x_var,f_mag,linewidth=2,c='green',label='F')
+plt.plot(x_var,g_mag,linewidth=2,c='r',label='G',linestyle='-')
+plt.plot([0.5,0.5],[0,1],linewidth=4,c='k',zorder=10)
+plt.ylabel('Joint Velocity Magnitude, [Normalized]')
+plt.xlabel('Percent of Full Cycle')
+plt.text(0.1,0.8,'Kicking Stage')
+plt.text(0.7,0.8,'Loading Stage')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+
+plt.plot(x_var,c_dir,linewidth=2,c='r',label='C',linestyle=':')
+plt.plot(x_var,d_dir,linewidth=2,c='r',label='D',linestyle='--')
+plt.plot(x_var,e_dir,linewidth=2,c='purple',label='E')
+plt.plot(x_var,f_dir,linewidth=2,c='green',label='F')
+plt.plot(x_var,g_dir,linewidth=2,c='r',label='G',linestyle='-')
+plt.plot([0.5,0.5],[-200,150],linewidth=4,c='k',zorder=10)
+plt.ylabel('Joint Velocity Direction, [Deg]')
+plt.xlabel('Percent of Full Cycle')
+plt.text(0.1,-150,'Kicking Stage')
+plt.text(0.7,0,'Loading Stage')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
