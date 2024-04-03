@@ -18,7 +18,20 @@ def get_velo(x,y):
     angles[angles > 143.7] -= 360
     magnitude_changes = np.sqrt(delta_x**2 + delta_y**2)
     return magnitude_changes, angles
-    
+
+def get_accel(v_mag, v_dir, t):
+    v_dir = np.radians(v_dir)
+    velo_x = v_mag * np.cos(v_dir)
+    velo_y = v_mag * np.sin(v_dir)
+    velo_vector = np.array([velo_x, velo_y])
+    delta_velo = np.diff(velo_vector, axis=1)
+    delta_t = np.diff(t)
+    delta_velo = delta_velo / delta_t
+    a_mag = np.sqrt(np.sum(delta_velo**2, axis=0)) / delta_t
+    a_dir = np.arctan2(delta_velo[1], delta_velo[0])
+    a_dir = np.degrees(a_dir)
+    return a_mag, a_dir
+
 def get_points(t1,t2,t3,t4,t5):
     [Ax,Ay] = [0, 0]
     [Bx,By] = [l6, 0]
@@ -29,7 +42,6 @@ def get_points(t1,t2,t3,t4,t5):
     [Gx,Gy] = [Dx - l23*np.cos(t1) , Dy - l23*np.sin(t1)]
     return([Ax,Ay,Bx,By,Cx,Cy,Dx,Dy,Ex,Ey,Fx,Fy,Gx,Gy])
 
-# Generate frames (plots)
 l12 = 1;
 l23 = 2.93;
 l2 = 2.71;
@@ -39,6 +51,7 @@ l5 = 1.789;
 l6 = 5.445;
 num_frames = 100
 theta_values = np.concatenate((np.linspace(0.25, 0.94, num_frames), np.linspace(0.94, 0.25, num_frames)), axis=0)
+
 
 Cx_history = []
 Cy_history = []
@@ -52,7 +65,6 @@ Gx_history = []
 Gy_history = []
 
 
-# Function to generate plot for a given frame
 def generate_plot(theta, show = False):
     t1 = theta
     def equations(x):
@@ -86,7 +98,6 @@ def generate_plot(theta, show = False):
     Gx_history.append(Gx)
     Gy_history.append(Gy)
     
-    # Create plot
     plt.figure()
     
     plt.scatter(Ax,Ay,s=50,c='k',label='A',zorder=10)
@@ -121,7 +132,6 @@ def generate_plot(theta, show = False):
     plt.xlabel('X')
     plt.ylabel('Y')
     
-    
     if show == True:
         delta = 0.33
         plt.text(Ax,Ay+delta,'A', fontsize=16)
@@ -133,21 +143,21 @@ def generate_plot(theta, show = False):
         plt.text(Gx,Gy-2*delta,'G', fontsize=16)
         plt.show()
     else:
-    # Save plot as image
         plt.savefig(f'frame_{theta:.2f}.png')
         plt.close()
 
-# Generate plots for each frame
+
 for theta in theta_values:
     generate_plot(theta)
 
-# Read saved images and create GIF
+
 images = []
 for theta in theta_values:
     images.append(imageio.imread(f'frame_{theta:.2f}.png'))
 
-# Save images as GIF
+
 imageio.mimsave('animation_trail.gif', images, fps=50)
+
 
 c_mag, c_dir = get_velo(Cx_history,Cy_history)
 d_mag, d_dir = get_velo(Dx_history,Dy_history)
@@ -163,7 +173,21 @@ f_mag = f_mag/norm
 g_mag = g_mag/norm
 
 x_var = np.linspace(0,1,len(c_mag))
+ca_mag, ca_dir = get_accel(c_mag, c_dir, x_var)
+da_mag, da_dir = get_accel(d_mag, d_dir, x_var)
+ea_mag, ea_dir = get_accel(e_mag, e_dir, x_var)
+fa_mag, fa_dir = get_accel(f_mag, f_dir, x_var)
+ga_mag, ga_dir = get_accel(g_mag, g_dir, x_var)
 
+norm = 1000
+ca_mag = ca_mag/norm
+da_mag = da_mag/norm
+ea_mag = ea_mag/norm
+fa_mag = fa_mag/norm
+ga_mag = ga_mag/norm
+
+
+# velocity plots below
 plt.plot(x_var,c_mag,linewidth=2,c='r',label='C',linestyle=':')
 plt.plot(x_var,d_mag,linewidth=2,c='r',label='D',linestyle='--')
 plt.plot(x_var,e_mag,linewidth=2,c='purple',label='E')
@@ -187,5 +211,36 @@ plt.ylabel('Joint Velocity Direction, [Deg]')
 plt.xlabel('Percent of Full Cycle')
 plt.text(0.1,-150,'Kicking Stage')
 plt.text(0.7,0,'Loading Stage')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+
+
+x_var = x_var[:-1]
+# acceleration plots below
+plt.plot(x_var,ca_mag,linewidth=2,c='r',label='C',linestyle=':')
+plt.plot(x_var,da_mag,linewidth=2,c='r',label='D',linestyle='--')
+plt.plot(x_var,ea_mag,linewidth=2,c='purple',label='E')
+plt.plot(x_var,fa_mag,linewidth=2,c='green',label='F')
+plt.plot(x_var,ga_mag,linewidth=2,c='r',label='G',linestyle='-')
+plt.plot([0.5,0.5],[-0.15,1.1],linewidth=4,c='k',zorder=10)
+plt.ylabel('Joint Acceleration Magnitude, [Normalized]')
+plt.xlabel('Percent of Full Cycle')
+plt.text(0.1,0.6,'Kicking Stage')
+plt.text(0.7,0.6,'Loading Stage')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.ylim([-0.1,1])
+plt.show()
+
+plt.plot(x_var,ca_dir,linewidth=2,c='r',label='C',linestyle=':')
+plt.plot(x_var,da_dir,linewidth=2,c='r',label='D',linestyle='--')
+plt.plot(x_var,ea_dir,linewidth=2,c='purple',label='E')
+plt.plot(x_var,fa_dir,linewidth=2,c='green',label='F')
+plt.plot(x_var,ga_dir,linewidth=2,c='r',label='G',linestyle='-')
+plt.plot([0.5,0.5],[-150,150],linewidth=4,c='k',zorder=10)
+plt.ylim([-100,100])
+plt.ylabel('Joint Acceleration Direction, [Deg]')
+plt.xlabel('Percent of Full Cycle')
+plt.text(0.1,-60,'Kicking Stage')
+plt.text(0.7,-60,'Loading Stage')
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.show()
